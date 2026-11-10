@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Interactive figures</title>
+<style>
+  :root {
+    --bg: #ffffff; --fg: #1f2328; --muted: #59636e; --line: #d8dee4;
+    --card: #f6f8fa; --accent: #2F5F8A;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #0d1117; --fg: #e6edf3; --muted: #9198a1; --line: #30363d;
+            --card: #161b22; --accent: #79a7d3; }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font: 16px/1.55 Georgia, "Times New Roman", serif;
+  }
+  main { max-width: 920px; margin: 0 auto; padding: 48px 16px 64px; }
+  h1 { font-size: 1.9rem; font-weight: normal; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 28px; }
+  p { margin: 0 0 14px; }
+  .grid { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+          margin: 28px 0 32px; }
+  a.card { display: block; text-decoration: none; color: inherit; background: var(--card);
+           border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  a.card:hover { border-color: var(--accent); }
+  a.card img { display: block; width: 100%; height: auto; background: #fff; }
+  .body { padding: 14px 16px 16px; }
+  .body h2 { font-size: 1.15rem; font-weight: normal; margin: 0 0 6px; color: var(--accent); }
+  .body p { margin: 0; color: var(--muted); font-size: 0.95rem; }
+  .note { font-size: 0.92rem; color: var(--muted); border-top: 1px solid var(--line); padding-top: 16px; }
+  code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.88em; }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Interactive figures</h1>
+  <p class="sub">Supplementary material for <em>[paper title]</em>, [authors]</p>
+
+  <p>
+    For a population of <i>N</i> = 3 units with fixed mean <i>&mu;</i> and variance
+    <i>&sigma;</i><sup>2</sup>, the deviations <b>z</b> = <b>y</b> &minus; <i>&mu;</i><b>1</b>
+    lie on the circle <i>S</i><sub><i>&sigma;</i></sub>, the intersection of the
+    mean-zero plane <i>H</i> with the sphere of radius &radic;<i>N</i>&thinsp;<i>&sigma;</i>.
+    Each figure shows how the largest value of a linear function of <b>z</b> is found by
+    projecting onto <i>H</i>.
+  </p>
+
+  <div class="grid">
+    <a class="card" href="single-unit.html">
+      <img src="img/single-unit.png" alt="3D figure: the plane H, the sphere, the circle S_sigma, e_3 and its projection onto H, and the maximiser z*" width="780" height="700">
+      <div class="body">
+        <h2>Single unit</h2>
+        <p>Largest deviation of one unit: <b>e</b><sub>3</sub> = <i>P<sub>H</sub></i><b>e</b><sub>3</sub> + <i>P</i><sub><i>H</i>&perp;</sub><b>e</b><sub>3</sub>, and <i>z</i><sub>3</sub><sup>*</sup> = &sigma;&radic;(<i>N</i>&minus;1).</p>
+      </div>
+    </a>
+    <a class="card" href="subset-mean.html">
+      <img src="img/subset-mean.png" alt="3D figure: the plane H, the sphere, the circle S_sigma, c_A and its projection onto H, and the maximiser z*" width="780" height="700">
+      <div class="body">
+        <h2>Mean of a subset</h2>
+        <p>Largest mean of a subset <i>A</i> = {1, 2}: <b>c</b><sub><i>A</i></sub> = <i>M</i><sup>&minus;1</sup><b>1</b><sub><i>A</i></sub>, and <i>z&#772;</i><sub><i>A</i></sub><sup>*</sup> = &sigma;&radic;((<i>N</i>&minus;<i>M</i>)/<i>M</i>).</p>
+      </div>
+    </a>
+  </div>
+
+  <p class="note">
+    Drag to rotate, scroll to zoom, and hover on <b>z</b><sup>*</sup> for its coordinates
+    and the maximum value; the home button in the toolbar restores the starting view.
+    The figures were produced in R with <code>plotly</code>; the scripts are
+    <a href="R/hyperplane_sphere_N3_plotly.R">R/hyperplane_sphere_N3_plotly.R</a> and
+    <a href="R/subset_mean_difference_N3_plotly.R">R/subset_mean_difference_N3_plotly.R</a>.
+  </p>
+</main>
+</body>
+</html>
