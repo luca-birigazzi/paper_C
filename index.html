@@ -1,79 +1,564 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Interactive figures</title>
+<title>Weight-vector bounds, N = 3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=Newsreader:opsz,wght@6..72,500&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --bg: #ffffff; --fg: #1f2328; --muted: #59636e; --line: #d8dee4;
-    --card: #f6f8fa; --accent: #2F5F8A;
+/* Layout idea: a narrow instrument panel (inputs, then the lemma evaluated) beside one large 3D figure.
+   Figure colours follow the paper's static figure: blue plane, grey sphere, red circle. */
+:root {
+  --bg: #f4f6f8;
+  --panel: #ffffff;
+  --ink: #18212c;
+  --muted: #5a6777;
+  --rule: #d7dde5;
+  --plane: #4c78a8;      /* H */
+  --proj: #2f5f8a;       /* P_H w */
+  --circle: #e45756;     /* S_sigma and z* */
+  --perp: #3b8f3a;       /* component along 1 */
+  --simplex: #e8890c;    /* non-negative populations */
+  --point: #0f8a94;      /* the population being inspected */
+  --sphere: #9aa3ad;
+  --out: #a9b0b9;        /* populations excluded by non-negativity */
+  --neg: #7a5bb5;        /* w'y < 0 when colouring by sign */
+  --font-display: "Newsreader", Georgia, "Times New Roman", serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", Helvetica, Arial, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11151b; --panel: #19202a; --ink: #e7ebf1; --muted: #9ba7b6; --rule: #2d3745;
+    --plane: #6f9fd2; --proj: #8fbdea; --circle: #ff7b76; --perp: #6cc46a; --simplex: #ffa53d; --point: #45c9d3; --sphere: #7d8896; --out: #5d6876; --neg: #b09af2;
+    color-scheme: dark;
   }
-  @media (prefers-color-scheme: dark) {
-    :root { --bg: #0d1117; --fg: #e6edf3; --muted: #9198a1; --line: #30363d;
-            --card: #161b22; --accent: #79a7d3; }
-  }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0; background: var(--bg); color: var(--fg);
-    font: 16px/1.55 Georgia, "Times New Roman", serif;
-  }
-  main { max-width: 920px; margin: 0 auto; padding: 48px 16px 64px; }
-  h1 { font-size: 1.9rem; font-weight: normal; margin: 0 0 4px; }
-  .sub { color: var(--muted); margin: 0 0 28px; }
-  p { margin: 0 0 14px; }
-  .grid { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-          margin: 28px 0 32px; }
-  a.card { display: block; text-decoration: none; color: inherit; background: var(--card);
-           border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
-  a.card:hover { border-color: var(--accent); }
-  a.card img { display: block; width: 100%; height: auto; background: #fff; }
-  .body { padding: 14px 16px 16px; }
-  .body h2 { font-size: 1.15rem; font-weight: normal; margin: 0 0 6px; color: var(--accent); }
-  .body p { margin: 0; color: var(--muted); font-size: 0.95rem; }
-  .note { font-size: 0.92rem; color: var(--muted); border-top: 1px solid var(--line); padding-top: 16px; }
-  code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.88em; }
-  a { color: var(--accent); }
+}
+:root[data-theme="dark"] {
+  --bg: #11151b; --panel: #19202a; --ink: #e7ebf1; --muted: #9ba7b6; --rule: #2d3745;
+  --plane: #6f9fd2; --proj: #8fbdea; --circle: #ff7b76; --perp: #6cc46a; --simplex: #ffa53d; --point: #45c9d3; --sphere: #7d8896; --out: #5d6876; --neg: #b09af2;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--font-body); font-size: 15px; line-height: 1.5;
+}
+.wrap { max-width: 1280px; margin: 0 auto; padding: 24px 20px 40px; display: flex; flex-direction: column; gap: 18px; }
+header h1 { font-family: var(--font-display); font-weight: 500; font-size: 28px; line-height: 1.2; margin: 0 0 6px; text-wrap: balance; }
+header p { margin: 0; max-width: 78ch; color: var(--muted); }
+.grid { display: grid; grid-template-columns: minmax(300px, 380px) minmax(0, 1fr); gap: 18px; align-items: start; }
+@media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+.panel { background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; padding: 16px; }
+.side { display: flex; flex-direction: column; gap: 14px; }
+h2 { font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 0 0 10px; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; }
+.field { display: flex; flex-direction: column; gap: 3px; flex: 1 1 70px; min-width: 0; }
+.field label { font-size: 12.5px; color: var(--muted); }
+input[type="number"] {
+  width: 100%; padding: 6px 8px; font: 500 15px var(--font-mono); color: var(--ink);
+  background: var(--bg); border: 1px solid var(--rule); border-radius: 4px;
+}
+input:focus-visible, button:focus-visible { outline: 2px solid var(--plane); outline-offset: 1px; }
+.presets { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+button {
+  font: 500 13px var(--font-body); color: var(--ink); background: var(--bg);
+  border: 1px solid var(--rule); border-radius: 4px; padding: 5px 9px; cursor: pointer;
+}
+button:hover { border-color: var(--plane); }
+button .v { font-family: var(--font-mono); color: var(--muted); font-size: 12px; }
+.check { display: flex; gap: 8px; align-items: flex-start; font-size: 13.5px; margin-top: 8px; }
+.check input { margin-top: 4px; }
+input[type="range"] { width: 100%; accent-color: var(--point); }
+.slabel + input + .slabel { margin-top: 8px; }
+.slabel { display: flex; justify-content: space-between; font-size: 13.5px; }
+.slabel b { font: 500 14px var(--font-mono); }
+.hint { font-size: 12.5px; color: var(--muted); margin: 6px 0 0; }
+dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 5px 12px; font-size: 13.5px; }
+dt { color: var(--muted); white-space: nowrap; }
+dd { margin: 0; font-family: var(--font-mono); font-size: 13px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+dt.sub { grid-column: 1 / -1; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--rule); font-weight: 600; color: var(--ink); }
+dt.sub + dd { display: none; }
+.why { display: block; font-family: var(--font-body); font-size: 12px; color: var(--muted); }
+.sw.dia { border-radius: 1px; transform: rotate(45deg); }
+.sw { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; vertical-align: 1px; }
+.verdict { margin-top: 12px; padding: 8px 10px; border-left: 4px solid var(--muted); background: var(--bg); font-size: 13.5px; border-radius: 0 4px 4px 0; }
+.verdict.yes { border-left-color: var(--perp); }
+.verdict.no { border-left-color: var(--circle); }
+.note { font-size: 12.5px; color: var(--muted); margin: 8px 0 0; }
+#bar { width: 100%; height: 74px; display: block; margin-top: 4px; }
+#bar text { font: 12px var(--font-mono); fill: var(--ink); }
+#bar .m { fill: var(--muted); }
+.figure { padding: 8px; }
+.figtools { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 4px 6px 8px; }
+.figtools span { font-size: 12.5px; color: var(--muted); margin-left: auto; }
+#plot { width: 100%; height: min(72vh, 720px); min-height: 440px; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 16px; padding: 8px 8px 4px; font-size: 13px; border-top: 1px solid var(--rule); }
+.legend i { font-style: italic; font-family: var(--font-display); font-size: 15px; }
+var { font-family: var(--font-display); font-size: 1.08em; }
+.nav { margin-top: 8px; font-size: 14px; }
+.nav a { color: var(--proj); }
 </style>
 </head>
 <body>
-<main>
-  <h1>Interactive figures</h1>
-  <p class="sub">Supplementary material for <em>[paper title]</em>, [authors]</p>
-
-  <p>
-    For a population of <i>N</i> = 3 units with fixed mean <i>&mu;</i> and variance
-    <i>&sigma;</i><sup>2</sup>, the deviations <b>z</b> = <b>y</b> &minus; <i>&mu;</i><b>1</b>
-    lie on the circle <i>S</i><sub><i>&sigma;</i></sub>, the intersection of the
-    mean-zero plane <i>H</i> with the sphere of radius &radic;<i>N</i>&thinsp;<i>&sigma;</i>.
-    Each figure shows how the largest value of a linear function of <b>z</b> is found by
-    projecting onto <i>H</i>.
-  </p>
+<div class="wrap">
+  <header>
+    <h1>Bounds on a weighted sum from the mean and variance, for three units</h1>
+    <p>Every point of the red circle is a population <var>y</var> = <var>μ</var><b>1</b> + <var>z</var> with mean <var>μ</var> and variance <var>σ</var>². The weighted sum is <var>w</var>′<var>y</var> = 3<var>w̄</var><var>μ</var> + <var>w</var>′<var>z</var>, and only the part of <var>w</var> lying in the plane, <var>P<sub>H</sub>w</var>, affects it: the sum is largest where the circle points along <var>P<sub>H</sub>w</var>. Tick “Require non-negative values” to add the triangle of non-negative populations: only the arcs of the circle inside it remain.</p>
+  <p class="nav"><a href="n4.html">Four units: the sphere inside the hyperplane →</a></p>
+  </header>
 
   <div class="grid">
-    <a class="card" href="single-unit.html">
-      <img src="img/single-unit.png" alt="3D figure: the plane H, the sphere, the circle S_sigma, e_3 and its projection onto H, and the maximiser z*" width="780" height="700">
-      <div class="body">
-        <h2>Single unit</h2>
-        <p>Largest deviation of one unit: <b>e</b><sub>3</sub> = <i>P<sub>H</sub></i><b>e</b><sub>3</sub> + <i>P</i><sub><i>H</i>&perp;</sub><b>e</b><sub>3</sub>, and <i>z</i><sub>3</sub><sup>*</sup> = &sigma;&radic;(<i>N</i>&minus;1).</p>
-      </div>
-    </a>
-    <a class="card" href="subset-mean.html">
-      <img src="img/subset-mean.png" alt="3D figure: the plane H, the sphere, the circle S_sigma, c_A and its projection onto H, and the maximiser z*" width="780" height="700">
-      <div class="body">
-        <h2>Mean of a subset</h2>
-        <p>Largest mean of a subset <i>A</i> = {1, 2}: <b>c</b><sub><i>A</i></sub> = <i>M</i><sup>&minus;1</sup><b>1</b><sub><i>A</i></sub>, and <i>z&#772;</i><sub><i>A</i></sub><sup>*</sup> = &sigma;&radic;((<i>N</i>&minus;<i>M</i>)/<i>M</i>).</p>
-      </div>
-    </a>
-  </div>
+    <div class="side">
+      <section class="panel">
+        <h2>Weight vector</h2>
+        <div class="row"><div class="field"><label for="w1">w₁</label><input type="number" id="w1" step="0.1" value="0"></div><div class="field"><label for="w2">w₂</label><input type="number" id="w2" step="0.1" value="0"></div><div class="field"><label for="w3">w₃</label><input type="number" id="w3" step="0.1" value="1"></div></div>
+        <div class="presets"><button type="button" data-w="0,0,1">One unit <span class="v">(0, 0, 1)</span></button><button type="button" data-w="1,1,0">Cleared subset <span class="v">(1, 1, 0)</span></button><button type="button" data-w="-1,1,0">Change <span class="v">(−1, 1, 0)</span></button><button type="button" data-w="-1,1,1">Change, unequal areas <span class="v">(−1, 1, 1)</span></button></div>
+        <label class="check" for="fit"><input type="checkbox" id="fit"> <span>Draw <var>w</var> rescaled to the sphere's radius (direction only)</span></label>
+      </section>
 
-  <p class="note">
-    Drag to rotate, scroll to zoom, and hover on <b>z</b><sup>*</sup> for its coordinates
-    and the maximum value; the home button in the toolbar restores the starting view.
-    The figures were produced in R with <code>plotly</code>; the scripts are
-    <a href="R/hyperplane_sphere_N3_plotly.R">R/hyperplane_sphere_N3_plotly.R</a> and
-    <a href="R/subset_mean_difference_N3_plotly.R">R/subset_mean_difference_N3_plotly.R</a>.
-  </p>
-</main>
+      <section class="panel">
+        <h2>Population</h2>
+        <div class="row">
+          <div class="field"><label for="mu">Mean μ</label><input type="number" id="mu" step="0.1" value="1.3"></div>
+          <div class="field"><label for="sigma">Standard deviation σ</label><input type="number" id="sigma" step="0.1" min="0.01" value="1"></div>
+        </div>
+        <label class="check" for="nonneg"><input type="checkbox" id="nonneg"> <span>Require non-negative values, <var>y<sub>i</sub></var> ≥ 0</span></label>
+        <label class="check" for="sign"><input type="checkbox" id="sign"> <span>Colour the circle by the sign of <var>w</var>′<var>y</var></span></label>
+      </section>
+
+      <section class="panel">
+        <h2>Population inspected</h2>
+        <div class="slabel"><label for="theta">Angle between <var>z</var> and <var>P<sub>H</sub>w</var></label><b id="thetaOut"></b></div>
+        <input type="range" id="theta" min="0" max="360" step="1" value="25">
+        <p class="hint">You can also click a point of the circle. The dashed chord joins the two populations with the same <var>w</var>′<var>y</var>.</p>
+        <svg id="bar" role="img" aria-label="Range of the weighted sum and its current value"></svg>
+        <p class="hint" id="barnote"></p>
+      </section>
+
+      <section class="panel">
+        <h2>The bounds, evaluated</h2>
+        <dl id="readout"></dl>
+        <div class="verdict" id="verdict"></div>
+        <p class="note" id="note"></p>
+      </section>
+    </div>
+
+    <section class="panel figure">
+      <div class="figtools">
+        <button type="button" id="viewDefault">Oblique view</button><button type="button" id="viewFace">Plane face-on (along 1)</button><button type="button" id="viewEdge">Plane edge-on</button>
+        <span>Drag to rotate, scroll to zoom</span>
+      </div>
+      <div id="plot"></div>
+      <div class="legend"><span><span class="sw" style="background:var(--sphere)"></span>sphere ‖<i>z</i>‖ = √3 <i>σ</i></span><span><span class="sw" style="background:var(--plane)"></span>plane <i>H</i></span><span><span class="sw" style="background:var(--proj)"></span><i>P<sub>H</sub>w</i></span><span><span class="sw" style="background:var(--perp)"></span><i>w̄</i><b>1</b>, the part of <i>w</i> along <i>H</i><sup>⊥</sup></span><span><span class="sw" style="background:var(--circle)"></span>circle <i>S<sub>σ</sub></i> and extremes ±<i>z</i>*</span><span><span class="sw" style="background:var(--simplex)"></span>non-negative populations</span><span><span class="sw dia" style="background:var(--simplex)"></span>extremes with <i>y<sub>i</sub></i> ≥ 0</span><span><span class="sw" style="background:var(--point)"></span>population inspected</span></div>
+    </section>
+  </div>
+</div>
+
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var gd = $("plot");
+
+  // ---- helpers
+  function dotv(a, b) { var s = 0; for (var i = 0; i < a.length; i++) s += a[i] * b[i]; return s; }
+  function normv(a) { return Math.sqrt(dotv(a, a)); }
+  function addv(a, b) { return a.map(function (x, i) { return x + b[i]; }); }
+  function mulv(a, k) { return a.map(function (x) { return x * k; }); }
+  function cross(a, b) { return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]; }
+  function fmt(x, d) {
+    if (x == null || !isFinite(x)) return "–";
+    d = d == null ? 3 : d;
+    var s = (Math.abs(x) < 5e-10 ? 0 : x).toFixed(d);
+    if (s.indexOf(".") >= 0) s = s.replace(/0+$/, "").replace(/\.$/, "");
+    if (s === "-0") s = "0";
+    return s.replace("-", "−");
+  }
+  function vec(v, d) { return "(" + v.map(function (x) { return fmt(x, d); }).join(", ") + ")"; }
+  function css(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+  function num(id, fallback) { var v = parseFloat($(id).value); return isFinite(v) ? v : fallback; }
+  function colours() {
+    var o = {};
+    ["ink", "muted", "plane", "circle", "proj", "perp", "point", "sphere", "simplex", "neg", "panel", "out"].forEach(function (k) { o[k] = css("--" + k); });
+    return o;
+  }
+
+  // ---- the lemma (mean and variance only)
+  function lemma(w, mu, sigma) {
+    var N = w.length, wbar = 0;
+    w.forEach(function (x) { wbar += x / N; });
+    var pw = w.map(function (x) { return x - wbar; });
+    var npw = normv(pw), R = Math.sqrt(N) * sigma, r = R * npw, centre = N * wbar * mu;
+    return { N: N, w: w, mu: mu, sigma: sigma, wbar: wbar, pw: pw, npw: npw, constant: npw < 1e-9, R: R, r: r,
+      centre: centre, lo: centre - r, hi: centre + r,
+      zstar: npw < 1e-9 ? w.map(function () { return 0; }) : mulv(pw, R / npw) };
+  }
+
+  // ---- the non-negativity lemma: maximum of w'y over y >= 0 with mean mu and variance sigma^2
+  function cmax(w, mu, sigma) {
+    var N = w.length, c = N * (mu * mu + sigma * sigma), cv2 = sigma * sigma / (mu * mu), i;
+    var wmax = Math.max.apply(null, w), top = [];
+    for (i = 0; i < N; i++) if (w[i] > wmax - 1e-12) top.push(i);
+    var m = top.length, y = w.map(function () { return 0; });
+    if (cv2 >= N / m - 1 - 1e-12) {                          // case (a): all carbon on the units of largest weight
+      var M = N * mu / m, varm = Math.max(0, c / m - M * M), d = m > 1 ? Math.sqrt(varm / (m - 1)) : 0;
+      top.forEach(function (j, q) { y[j] = q === 0 ? M + (m - 1) * d : M - d; });
+      return { value: N * mu * wmax, y: y, kind: "all", zero: w.map(function (x, j) { return j; }).filter(function (j) { return top.indexOf(j) < 0; }) };
+    }
+    var levels = w.slice().sort(function (a, b) { return a - b; }).filter(function (x, j, arr) { return j === 0 || x - arr[j - 1] > 1e-12; });
+    for (var k = 0; k < levels.length - 1; k++) {            // case (b): set the k lowest weight groups to zero, project again
+      var thr = k === 0 ? -Infinity : levels[k - 1] + 1e-12, K = [], zero = [];
+      for (i = 0; i < N; i++) (w[i] > thr ? K : zero).push(i);
+      var NK = K.length, muK = N * mu / NK, varK = c / NK - muK * muK;
+      if (varK < -1e-12) continue;
+      var wb = 0; K.forEach(function (j) { wb += w[j] / NK; });
+      var ss = 0; K.forEach(function (j) { ss += (w[j] - wb) * (w[j] - wb); });
+      if (ss < 1e-18) continue;
+      var b = Math.sqrt(NK * Math.max(0, varK) / ss), a = muK - b * wb, ok = true;
+      y = w.map(function () { return 0; });
+      K.forEach(function (j) { y[j] = a + b * w[j]; if (y[j] < -1e-9) ok = false; });
+      zero.forEach(function (j) { if (a + b * w[j] > 1e-9) ok = false; });
+      if (ok) return { value: dotv(w, y), y: y, kind: k === 0 ? "same" : "clip", zero: zero };
+    }
+    return null;
+  }
+  function nonnegBounds(w, mu, sigma) {
+    var N = w.length;
+    if (!(mu > 0) || sigma / mu > Math.sqrt(N - 1) + 1e-9) return { feasible: false };
+    var a = cmax(w, mu, sigma), b = cmax(mulv(w, -1), mu, sigma);
+    if (!a || !b) return { feasible: false };
+    return { feasible: true, max: a, min: { value: -b.value, y: b.y, kind: b.kind, zero: b.zero } };
+  }
+  function admissible(y) { for (var i = 0; i < y.length; i++) if (y[i] < -1e-9) return false; return true; }
+
+  // values of w'y attained by non-negative populations: scan the level sets (constant angle to P_H w)
+  function attained(s, levelOK) {
+    if (s.constant) return [[s.centre, s.centre]];
+    var n = 720, runs = [], start = null, last = null;
+    for (var j = 0; j <= n; j++) {
+      var phi = Math.PI * j / n, v = s.centre + s.r * Math.cos(phi), ok = levelOK(phi);
+      if (ok) { if (start === null) start = v; last = v; }
+      else if (start !== null) { runs.push([last, start]); start = null; }
+    }
+    if (start !== null) runs.push([last, start]);
+    runs.reverse();
+    if (runs.length && s.nn && s.nn.feasible) { runs[0][0] = s.nn.min.value; runs[runs.length - 1][1] = s.nn.max.value; }
+    return runs;
+  }
+
+  // ---- plotly plumbing
+  function seg(a, b, color, width, dash) {
+    return { type: "scatter3d", mode: "lines", x: [a[0], b[0]], y: [a[1], b[1]], z: [a[2], b[2]],
+      line: { color: color, width: width, dash: dash || "solid" }, hoverinfo: "skip" };
+  }
+  function poly(pts, color, width, dash) {
+    return { type: "scatter3d", mode: "lines", x: pts.map(function (p) { return p ? p[0] : null; }), y: pts.map(function (p) { return p ? p[1] : null; }),
+      z: pts.map(function (p) { return p ? p[2] : null; }), line: { color: color, width: width, dash: dash || "solid" }, hoverinfo: "skip" };
+  }
+  function cone(tip, dir, color, size) {
+    var n = normv(dir) || 1;
+    return { type: "cone", x: [tip[0]], y: [tip[1]], z: [tip[2]], u: [dir[0] / n], v: [dir[1] / n], w: [dir[2] / n],
+      anchor: "tip", sizemode: "absolute", sizeref: size, showscale: false,
+      colorscale: [[0, color], [1, color]], hoverinfo: "skip", lighting: { ambient: 1, diffuse: 0 } };
+  }
+  function Labels() {
+    var L = { x: [], y: [], z: [], text: [], color: [] };
+    L.add = function (p, text, color, f) {
+      var pp = mulv(p, f == null ? 1.1 : f);
+      L.x.push(pp[0]); L.y.push(pp[1]); L.z.push(pp[2]); L.text.push(text); L.color.push(color);
+    };
+    L.trace = function () {
+      return { type: "scatter3d", mode: "text", x: L.x, y: L.y, z: L.z, text: L.text,
+        textfont: { color: L.color, size: 15, family: "IBM Plex Sans, Helvetica, Arial, sans-serif" }, hoverinfo: "skip" };
+    };
+    return L;
+  }
+  function cam(eye, up) { return { eye: { x: eye[0], y: eye[1], z: eye[2] }, up: { x: up[0], y: up[1], z: up[2] }, center: { x: 0, y: 0, z: 0 }, projection: { type: "orthographic" } }; }
+  var first = true, nextCamera = null, onPlotClick = null, DEFAULT_ZOOM = 1.9;
+  function plot(traces, L, defaultCamera) {
+    var sc = gd.layout && gd.layout.scene;
+    var camera = nextCamera || (sc && sc.camera) || defaultCamera; nextCamera = null;
+    var zoom = (sc && sc.aspectratio) || { x: DEFAULT_ZOOM, y: DEFAULT_ZOOM, z: DEFAULT_ZOOM };
+    var axis = { visible: false, range: [-L, L], showspikes: false };
+    traces.forEach(function (t) { t.showlegend = false; });
+    Plotly.react(gd, traces, {
+      margin: { l: 0, r: 0, t: 0, b: 0 }, paper_bgcolor: "rgba(0,0,0,0)", showlegend: false,
+      hoverlabel: { font: { family: "IBM Plex Mono, monospace", size: 12 } },
+      scene: { xaxis: axis, yaxis: axis, zaxis: axis, aspectmode: "manual", aspectratio: zoom, dragmode: "orbit", camera: camera }
+    }, { responsive: true, displaylogo: false, scrollZoom: true, modeBarButtonsToRemove: ["resetCameraLastSave3d", "resetCameraDefault3d", "hoverClosest3d", "tableRotation"] });
+    if (first) {
+      first = false;
+      // plotly's own 3D click event is unreliable, so treat a press and release without movement over a hovered point as a click
+      var hovered = null, down = null;
+      gd.on("plotly_hover", function (ev) { hovered = ev && ev.points && ev.points[0]; });
+      gd.on("plotly_unhover", function () { hovered = null; });
+      gd.addEventListener("pointerdown", function (e) { down = [e.clientX, e.clientY]; }, true);
+      gd.addEventListener("pointerup", function (e) {
+        if (down && Math.abs(e.clientX - down[0]) + Math.abs(e.clientY - down[1]) < 5 && hovered && onPlotClick) onPlotClick(hovered);
+        down = null;
+      }, true);
+    }
+  }
+  function setView(camera) { nextCamera = camera; render(); }
+
+  // ---- readout
+  function unitList(idx) { return idx.map(function (j) { return j + 1; }).join(", "); }
+  function describe(b, which, s) {
+    if (b.kind === "same") return "unchanged: the " + which + " from the mean and variance is already non-negative";
+    if (b.kind === "all") return "all carbon on the unit" + (s.N - b.zero.length > 1 ? "s" : "") + " of " + (which === "maximiser" ? "largest" : "smallest") + " weight";
+    return "unit" + (b.zero.length > 1 ? "s " : " ") + unitList(b.zero) + " set to zero, then projected again";
+  }
+  function readout(s) {
+    var rows = [], rt = "√" + s.N;
+    function row(k, v) { rows.push("<dt>" + k + "</dt><dd>" + v + "</dd>"); }
+    function head(t) { rows.push('<dt class="sub">' + t + "</dt><dd></dd>"); }
+    row("<var>w̄</var>", fmt(s.wbar));
+    row("<var>P<sub>H</sub>w</var> = <var>w</var> − <var>w̄</var><b>1</b>", vec(s.pw));
+    row("‖<var>P<sub>H</sub>w</var>‖", fmt(s.npw));
+    row("<var>r</var>(<var>w</var>) = " + (s.N === 4 ? "2<var>σ</var>" : "<var>σ</var>" + rt) + " ‖<var>P<sub>H</sub>w</var>‖", fmt(s.r));
+    row(s.N + "<var>w̄</var><var>μ</var> ± <var>r</var>(<var>w</var>)", "[" + fmt(s.lo) + ", " + fmt(s.hi) + "]");
+    if (!s.constant) {
+      row('<span class="sw" style="background:var(--circle)"></span><var>z</var>*', vec(s.zstar));
+      row("<var>y</var> at maximum", vec(s.zstar.map(function (v) { return s.mu + v; })));
+      row("<var>y</var> at minimum", vec(s.zstar.map(function (v) { return s.mu - v; })));
+    }
+    var nn = s.nn;
+    if (nn && nn.feasible && !s.constant) {
+      head("With <var>y<sub>i</sub></var> ≥ 0");
+      row("bounds", "[" + fmt(nn.min.value) + ", " + fmt(nn.max.value) + "]");
+      row('<span class="sw dia" style="background:var(--simplex)"></span><var>y</var> at maximum', vec(nn.max.y) + '<span class="why">' + describe(nn.max, "maximiser", s) + "</span>");
+      row('<span class="sw dia" style="background:var(--simplex)"></span><var>y</var> at minimum', vec(nn.min.y) + '<span class="why">' + describe(nn.min, "minimiser", s) + "</span>");
+      if (s.segs && s.segs.length > 1) row("values attained", s.segs.map(function (g) { return "[" + fmt(g[0], 2) + ", " + fmt(g[1], 2) + "]"; }).join(" ∪ "));
+    }
+    head("Population inspected");
+    row('<span class="sw" style="background:var(--point)"></span><var>y</var>', vec(s.y));
+    row("<var>w</var>′<var>y</var>", fmt(s.value) + (s.constant ? "" : "  = " + fmt(s.centre) + " + " + fmt(s.r) + " cos " + fmt(s.thetaDeg, 0) + "°"));
+    $("readout").innerHTML = rows.join("");
+
+    var use = nn && nn.feasible, lo = use ? nn.min.value : s.lo, hi = use ? nn.max.value : s.hi;
+    var set = use ? "non-negative population with these moments" : "population with these moments";
+    var v = $("verdict"), txt, cls;
+    if (nn && !nn.feasible) {
+      cls = "no"; txt = "<b>No non-negative population has these moments.</b> Non-negativity requires <var>μ</var> > 0 and <var>σ</var>/<var>μ</var> ≤ √" + (s.N - 1) + ".";
+    } else if (s.constant) {
+      cls = ""; txt = "All weights are equal, so <var>P<sub>H</sub>w</var> = <b>0</b> and <var>w</var>′<var>y</var> = " + s.N + "<var>w̄</var><var>μ</var> = " + fmt(s.centre) + " for every population.";
+    } else if (lo > 1e-9 || hi < -1e-9) {
+      cls = "yes"; txt = "<b>Sign identified.</b> Every " + set + " gives a " + (lo > 0 ? "positive" : "negative") + " <var>w</var>′<var>y</var>.";
+    } else if (lo > -1e-9 || hi < 1e-9) {
+      cls = "yes"; txt = "<b>Sign identified up to zero.</b> No " + set + " gives a " + (lo > -1e-9 ? "negative" : "positive") + " <var>w</var>′<var>y</var>, and zero is attained.";
+    } else {
+      cls = "no"; txt = "<b>Sign not identified.</b> Both signs of <var>w</var>′<var>y</var> occur among the " + set.replace("population", "populations") + ".";
+    }
+    if (!s.constant && s.mu > 0 && normv(s.w) > 1e-9) {
+      var phi = Math.acos(Math.min(1, Math.abs(s.wbar) * Math.sqrt(s.N) / normv(s.w))) * 180 / Math.PI;
+      var psi = Math.atan(s.sigma / s.mu) * 180 / Math.PI;
+      txt += " From the mean and variance alone the sign is identified when <var>φ</var> + <var>ψ</var> < 90°: here <var>φ</var> = " + fmt(phi, 1) + "° (angle of <var>w</var> to <b>1</b>) and <var>ψ</var> = arctan(<var>σ</var>/<var>μ</var>) = " + fmt(psi, 1) + "°, sum " + fmt(phi + psi, 1) + "°.";
+    }
+    v.className = "verdict " + cls; v.innerHTML = txt;
+    $("note").textContent = admissible(s.y) ? "" : (nn ? "The population inspected has a negative value, so it is excluded by non-negativity." : "The population inspected has a negative value. Tick the non-negativity box to see which populations remain.");
+  }
+
+  // ---- interval bar
+  function bar(s) {
+    var svg = $("bar"), W = svg.clientWidth || 320, Hh = 74, pad = 34, yl = 38, C = colours();
+    var lo = s.lo, hi = s.hi, span = hi - lo, d0 = lo, d1 = hi;
+    if (span < 1e-9) { d0 = lo - 1; d1 = hi + 1; }
+    var X = function (v) { return pad + (W - 2 * pad) * (v - d0) / (d1 - d0); };
+    var use = s.nn && s.nn.feasible && s.segs, o = "";
+    o += '<line x1="' + X(lo) + '" x2="' + X(hi) + '" y1="' + yl + '" y2="' + yl + '" stroke="' + C.circle + '" stroke-width="' + (use ? 2 : 5) + '" stroke-linecap="round"' + (use ? ' stroke-dasharray="1 5"' : "") + "/>";
+    if (use) s.segs.forEach(function (g) {
+      o += '<line x1="' + X(g[0]) + '" x2="' + Math.max(X(g[1]), X(g[0]) + 0.01) + '" y1="' + yl + '" y2="' + yl + '" stroke="' + C.circle + '" stroke-width="6" stroke-linecap="round"/>';
+    });
+    function tick(v, lab) {
+      o += '<line x1="' + X(v) + '" x2="' + X(v) + '" y1="' + (yl - 8) + '" y2="' + (yl + 8) + '" stroke="' + C.ink + '" stroke-width="1.5"/>';
+      if (lab != null) o += '<text x="' + X(v) + '" y="' + (yl + 24) + '" text-anchor="middle">' + lab + "</text>";
+    }
+    if (span >= 1e-9) {
+      tick(lo, fmt(lo, 2)); tick(hi, fmt(hi, 2));
+      if (lo < 0 && hi > 0) { var f = (0 - lo) / span; tick(0, f > 0.14 && f < 0.86 ? "0" : null); }
+      else o += '<text class="m" x="' + (W / 2) + '" y="' + (yl + 24) + '" text-anchor="middle">zero lies outside</text>';
+    } else tick(lo, fmt(lo, 2));
+    var xv = X(s.value);
+    o += '<circle cx="' + xv + '" cy="' + yl + '" r="7" fill="' + C.point + '" stroke="' + C.panel + '" stroke-width="2"/>';
+    var anchor = xv < 70 ? "start" : (xv > W - 70 ? "end" : "middle");
+    o += '<text x="' + xv + '" y="' + (yl - 16) + '" text-anchor="' + anchor + '">w′y = ' + fmt(s.value, 2) + "</text>";
+    svg.setAttribute("viewBox", "0 0 " + W + " " + Hh);
+    svg.innerHTML = o;
+    $("barnote").textContent = use ? "Thick: values attained with non-negative values. Dotted: mean and variance only." : "";
+  }
+
+  function render() {
+    var s = computeState(); drawScene(s); readout(s); bar(s);
+    $("thetaOut").textContent = fmt(s.thetaDeg, 0) + "°";
+    if ($("lambdaOut")) $("lambdaOut").textContent = fmt(num("lambda", 0), 0) + "°";
+  }
+  function wire(ids) {
+    ids.forEach(function (id) { $(id).addEventListener("input", render); });
+    document.querySelectorAll("[data-w]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        b.getAttribute("data-w").split(",").forEach(function (v, i) { $("w" + (i + 1)).value = v; });
+        render();
+      });
+    });
+    window.addEventListener("resize", function () { bar(computeState()); });
+    if (window.matchMedia) { var mq = window.matchMedia("(prefers-color-scheme: dark)"); if (mq.addEventListener) mq.addEventListener("change", render); }
+    new MutationObserver(render).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+  }
+
+  var SQ3 = Math.sqrt(3), ONE = [1 / SQ3, 1 / SQ3, 1 / SQ3];
+  var A = [1 / Math.SQRT2, -1 / Math.SQRT2, 0], B = [1 / Math.sqrt(6), 1 / Math.sqrt(6), -2 / Math.sqrt(6)];
+  DEFAULT_ZOOM = 1.9;
+
+  function computeState() {
+    var s = lemma([num("w1", 0), num("w2", 0), num("w3", 0)], num("mu", 0), Math.max(num("sigma", 1), 1e-6));
+    s.theta = num("theta", 0) * Math.PI / 180; s.thetaDeg = num("theta", 0);
+    s.u1 = s.constant ? A : mulv(s.pw, 1 / s.npw);
+    s.u2 = cross(ONE, s.u1);
+    s.zOf = function (t) { return addv(mulv(s.u1, s.R * Math.cos(t)), mulv(s.u2, s.R * Math.sin(t))); };
+    s.z = s.zOf(s.theta);
+    s.y = s.z.map(function (v) { return v + s.mu; });
+    s.value = s.centre + s.r * Math.cos(s.theta);
+    s.nn = $("nonneg").checked ? nonnegBounds(s.w, s.mu, s.sigma) : null;
+    var okAt = function (t) { return admissible(s.zOf(t).map(function (v) { return v + s.mu; })); };
+    s.okAt = okAt;
+    s.segs = s.nn && s.nn.feasible ? attained(s, function (phi) { return okAt(phi) || okAt(-phi); }) : null;
+    return s;
+  }
+
+  function drawScene(s) {
+    var c = colours(), T = [], lab = Labels();
+    var nn = s.nn && s.nn.feasible ? s.nn : null;
+    var k = 1, nw = normv(s.w);
+    if ($("fit").checked && nw > 1e-9) k = s.R / nw;
+    var wD = mulv(s.w, k), pwD = mulv(s.pw, k);
+    var vtx = nn ? Math.min(s.mu * Math.sqrt(6), 2.2 * s.R) : 0;       // distance of the triangle's vertices (capped)
+    var L = 1.3 * Math.max(s.R, normv(wD), vtx), head = 0.1 * L;
+
+    // sphere
+    var nu = 36, nv = 18, X = [], Y = [], Z = [];
+    for (var i = 0; i <= nv; i++) {
+      var ph = Math.PI * i / nv, rx = [], ry = [], rz = [];
+      for (var j = 0; j <= nu; j++) { var th = 2 * Math.PI * j / nu; rx.push(s.R * Math.sin(ph) * Math.cos(th)); ry.push(s.R * Math.sin(ph) * Math.sin(th)); rz.push(s.R * Math.cos(ph)); }
+      X.push(rx); Y.push(ry); Z.push(rz);
+    }
+    T.push({ type: "surface", x: X, y: Y, z: Z, opacity: 0.14, showscale: false, hoverinfo: "skip",
+      colorscale: [[0, c.sphere], [1, c.sphere]], surfacecolor: X.map(function (row) { return row.map(function () { return 0; }); }),
+      contours: { x: { highlight: false }, y: { highlight: false }, z: { highlight: false } }, lighting: { ambient: 0.9, diffuse: 0.3, specular: 0.05 } });
+    var gc = [];
+    [[0, 1], [0, 2], [1, 2]].forEach(function (pr) {
+      for (var g = 0; g <= 90; g++) { var ga = 2 * Math.PI * g / 90, pt = [0, 0, 0]; pt[pr[0]] = s.R * Math.cos(ga); pt[pr[1]] = s.R * Math.sin(ga); gc.push(pt); }
+      gc.push(null);
+    });
+    var gct = poly(gc, c.sphere, 1.5); gct.opacity = 0.7; T.push(gct);
+
+    // plane H: a disc
+    var h = Math.max(1.25 * s.R, 1.05 * vtx), P = [], nP = 72;
+    for (var a = 0; a < nP; a++) { var an = 2 * Math.PI * a / nP; P.push(addv(mulv(A, h * Math.cos(an)), mulv(B, h * Math.sin(an)))); }
+    var mx = [0], my = [0], mz = [0], mi = [], mj = [], mk = [];
+    P.forEach(function (p, q) { mx.push(p[0]); my.push(p[1]); mz.push(p[2]); mi.push(0); mj.push(q + 1); mk.push((q + 1) % nP + 1); });
+    T.push({ type: "mesh3d", x: mx, y: my, z: mz, i: mi, j: mj, k: mk, color: c.plane, opacity: 0.22, hoverinfo: "skip", flatshading: true, lighting: { ambient: 1, diffuse: 0 } });
+    T.push(poly(P.concat([P[0]]), c.plane, 2));
+    lab.add(P[22], "H", c.proj, 0.92);
+
+    // coordinate axes, the line spanned by 1 and the vector 1
+    var ax = [];
+    [[1, 0, 0], [0, 1, 0], [0, 0, 1]].forEach(function (e) { ax.push(mulv(e, -L), mulv(e, L), null); });
+    T.push(poly(ax, c.muted, 2));
+    lab.add([L, 0, 0], "z<sub>1</sub>", c.muted, 1.05); lab.add([0, L, 0], "z<sub>2</sub>", c.muted, 1.05); lab.add([0, 0, L], "z<sub>3</sub>", c.muted, 1.05);
+    T.push(seg(mulv(ONE, -L), mulv(ONE, L), c.muted, 2, "dot"));
+    lab.add(mulv(ONE, L), "H<sup>⊥</sup>", c.muted, 1.06);
+
+    // non-negativity: the triangle of non-negative populations
+    if (nn) {
+      var V = [0, 1, 2].map(function (q) { return [0, 1, 2].map(function (j) { return s.mu * ((j === q ? 3 : 0) - 1); }); });
+      T.push({ type: "mesh3d", x: V.map(function (p) { return p[0]; }), y: V.map(function (p) { return p[1]; }), z: V.map(function (p) { return p[2]; }),
+        i: [0], j: [1], k: [2], color: c.simplex, opacity: 0.28, hoverinfo: "skip", flatshading: true, lighting: { ambient: 1, diffuse: 0 } });
+      T.push(poly(V.concat([V[0]]), c.simplex, 4));
+      T.push({ type: "scatter3d", mode: "markers", x: V.map(function (p) { return p[0]; }), y: V.map(function (p) { return p[1]; }), z: V.map(function (p) { return p[2]; }),
+        marker: { size: 4, color: c.simplex }, text: V.map(function (p, q) { return "unit " + (q + 1) + " holds all the carbon<br>y = " + vec(p.map(function (v) { return v + s.mu; }), 2); }), hoverinfo: "text" });
+    }
+
+    // circle S_sigma: admissible part solid, the rest dashed
+    var m = 720, inP = [], outP = [], cdIn = [], cdOut = [], col = [], prevIn = null;
+    for (var q = 0; q <= m; q++) {
+      var t = 2 * Math.PI * q / m, zz = s.zOf(t), val = s.centre + s.r * Math.cos(t), isIn = !nn || s.okAt(t);
+      var cd = [vec(zz.map(function (v) { return v + s.mu; }), 2), fmt(val, 3), (360 * q / m) % 360];
+      if (prevIn !== null && isIn !== prevIn) { (isIn ? inP : outP).push(lastPt); (isIn ? cdIn : cdOut).push(lastCd); if (isIn) col.push(lastCol); (isIn ? outP : inP).push(null); (isIn ? cdOut : cdIn).push(null); if (!isIn) col.push(0); }
+      (isIn ? inP : outP).push(zz); (isIn ? cdIn : cdOut).push(cd); if (isIn) col.push(val < 0 ? 0 : 1);
+      var lastPt = zz, lastCd = cd, lastCol = val < 0 ? 0 : 1; prevIn = isIn;
+    }
+    var bySign = $("sign").checked;
+    var tin = poly(inP, c.circle, 9); tin.name = "circle"; tin.customdata = cdIn;
+    if (bySign) tin.line = { width: 9, color: col, colorscale: [[0, c.neg], [0.5, c.neg], [0.5, c.circle], [1, c.circle]], cmin: 0, cmax: 1 };
+    tin.hoverinfo = "all"; tin.hovertemplate = "y = %{customdata[0]}<br>w′y = %{customdata[1]}<extra></extra>";
+    T.push(tin);
+    if (outP.length) {
+      var tout = poly(outP, c.out, 4, "dash"); tout.name = "circle"; tout.customdata = cdOut;
+      tout.hoverinfo = "all"; tout.hovertemplate = "y = %{customdata[0]}<br>w′y = %{customdata[1]}<br>excluded: a value is negative<extra></extra>";
+      T.push(tout);
+    }
+    lab.add(s.zOf(Math.PI * 0.72), "<i>S</i><sub>σ</sub>", c.circle, 1.13);
+
+    // chord of equal w'y through the inspected population
+    T.push(seg(s.z, s.zOf(-s.theta), c.point, 4, "dash"));
+
+    // w = P_H w + w-bar 1, drawn head to tail
+    if (nw > 1e-9) {
+      T.push(seg([0, 0, 0], wD, c.ink, 6)); T.push(cone(wD, wD, c.ink, head));
+      lab.add(wD, k === 1 ? "<b>w</b>" : "<b>w</b> (rescaled)", c.ink, 1.16);
+    }
+    if (!s.constant) {
+      T.push(seg([0, 0, 0], pwD, c.proj, 8)); T.push(cone(pwD, pwD, c.proj, head));
+      lab.add(pwD, "P<sub>H</sub><b>w</b>", c.proj, 1.22);
+      if (Math.abs(s.wbar) > 1e-9) {
+        var d = addv(wD, mulv(pwD, -1));
+        T.push(seg(pwD, wD, c.perp, 6)); T.push(cone(wD, d, c.perp, head * 0.7));
+        lab.add(addv(mulv(addv(pwD, wD), 0.5), mulv(ONE, 0)), "w̄<b>1</b>", c.perp, 1.0);
+      }
+      var zs = s.zstar, zn = mulv(zs, -1);
+      T.push(seg(pwD, zs, c.circle, 3, "dot"));
+      T.push({ type: "scatter3d", mode: "markers", x: [zs[0], zn[0]], y: [zs[1], zn[1]], z: [zs[2], zn[2]],
+        marker: { size: 7, color: c.circle, symbol: ["circle", "circle-open"], line: { color: c.circle, width: 2 } },
+        customdata: [[vec(zs.map(function (v) { return v + s.mu; }), 3), fmt(s.hi), "maximum, mean and variance only"], [vec(zn.map(function (v) { return v + s.mu; }), 3), fmt(s.lo), "minimum, mean and variance only"]],
+        hovertemplate: "%{customdata[2]}<br>y = %{customdata[0]}<br>w′y = %{customdata[1]}<extra></extra>" });
+      lab.add(zs, "<b>z</b>*", c.circle, 1.13); lab.add(zn, "−<b>z</b>*", c.circle, 1.13);
+      if (nn) {
+        var E = [];
+        if (nn.max.kind !== "same") E.push([nn.max, "maximum with non-negative values"]);
+        if (nn.min.kind !== "same") E.push([nn.min, "minimum with non-negative values"]);
+        if (E.length) T.push({ type: "scatter3d", mode: "markers",
+          x: E.map(function (e) { return e[0].y[0] - s.mu; }), y: E.map(function (e) { return e[0].y[1] - s.mu; }), z: E.map(function (e) { return e[0].y[2] - s.mu; }),
+          marker: { size: 6, color: c.simplex, symbol: "diamond", line: { color: c.ink, width: 1 } },
+          customdata: E.map(function (e) { return [vec(e[0].y, 3), fmt(e[0].value), e[1]]; }),
+          hovertemplate: "%{customdata[2]}<br>y = %{customdata[0]}<br>w′y = %{customdata[1]}<extra></extra>" });
+      }
+    }
+
+    // inspected population
+    T.push(seg([0, 0, 0], s.z, c.point, 5));
+    T.push({ type: "scatter3d", mode: "markers", x: [s.z[0]], y: [s.z[1]], z: [s.z[2]],
+      marker: { size: 8, color: c.point, line: { color: c.panel, width: 1.5 } },
+      hovertemplate: "y = " + vec(s.y, 3) + "<br>w′y = " + fmt(s.value) + "<extra></extra>" });
+    if (s.constant || Math.abs(Math.sin(s.theta)) > 0.2) lab.add(s.z, "<b>z</b>", c.point, 1.13);
+
+    T.push(lab.trace());
+    plot(T, L, VIEWS.oblique);
+  }
+
+  var VIEWS = { oblique: cam([1.8, -0.3, 1.0], [0, 0, 1]), face: cam([1, 1, 1], [0, 0, 1]), edge: cam([1, -1, 0], [1, 1, 1]) };
+  onPlotClick = function (p) { if (p.data && p.data.name === "circle" && p.customdata) { $("theta").value = Math.round(p.customdata[2]); render(); } };
+  $("viewDefault").addEventListener("click", function () { setView(VIEWS.oblique); });
+  $("viewFace").addEventListener("click", function () { setView(VIEWS.face); });
+  $("viewEdge").addEventListener("click", function () { setView(VIEWS.edge); });
+  wire(["w1", "w2", "w3", "mu", "sigma", "theta", "fit", "sign", "nonneg"]);
+  render();
+
+})();
+</script>
 </body>
 </html>
